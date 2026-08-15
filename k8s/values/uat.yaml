@@ -1,0 +1,103 @@
+namespace: ap-cms
+env: uat
+appVersion: "0.1.0"
+
+# Fallback registry for any component that does not set its own.
+registry: docker.io
+
+api:
+  registry: docker.io
+  image: aprilpollo/ap-cms-api
+  tag: ap-20260815
+
+mail:
+  registry: docker.io
+  image: aprilpollo/mail
+  tag: latest
+  pullPolicy: Always
+  env:
+    APP_NAME: EMAIL_SERVICE
+    APP_VERSION: "0.1.1"
+    API_PORT: "8081"
+    APP_MODE: production
+    API_SHUTDOWN_TIMEOUT_SECONDS: "30"
+    ALLOWED_CREDENTIAL_ORIGINS: "*"
+    TIME_ZONE: Asia/Bangkok
+
+redis:
+  registry: docker.io
+  image: redis
+  tag: 8.8-alpine
+
+postgres:
+  registry: docker.io
+  image: postgres
+  tag: 16-alpine
+  storage: 5Gi
+
+domain:
+  api: uat-api.ap-cms.com
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+
+resources:
+  api:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  mail:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  redis:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  postgres:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+replicas:
+  api: 1
+  mail: 1
+  redis: 1
+  postgres: 1
+
+service:
+  api:
+    port: 3000
+    targetPort: 3000
+
+  mail:
+    port: 8081
+    targetPort: 8081
+
+  redis:
+    port: 6379
+    targetPort: 6379
+
+  postgres:
+    port: 5432
+    targetPort: 5432

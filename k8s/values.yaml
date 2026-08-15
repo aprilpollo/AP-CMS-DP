@@ -1,0 +1,16 @@
+# Chart-wide defaults.
+#
+# ค่าจริงของแต่ละ environment อยู่ใน k8s/values/<env>.yaml และถูก merge ทับไฟล์นี้
+# ตอน `helm upgrade --values` (k8s.sh deploy ทำให้อัตโนมัติ)
+#
+# ตั้งใจใส่เฉพาะค่า global ที่ไม่ผูกกับ environment เท่านั้น ไม่ใส่ image/tag/port
+# เป็น default เพราะถ้าไฟล์ env สะกด key ผิด เราอยากให้ render ล้มไปเลย
+# ดีกว่าเงียบ ๆ ไป fallback ค่าอื่นแล้ว deploy ของผิดขึ้น cluster
+
+# registry กลาง ใช้เมื่อ component ไหนไม่ได้ระบุ registry ของตัวเอง
+registry: docker.io
+
+# ปิด ingress ไว้ก่อนเป็น default เพื่อไม่ให้ environment ที่ยังไม่ได้ตั้ง
+# ingress className เผลอสร้าง Ingress ที่ไม่มี controller รับไปทำงาน
+ingress:
+  enabled: false

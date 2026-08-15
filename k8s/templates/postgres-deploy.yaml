@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-postgres
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Release.Name }}-postgres
+spec:
+  replicas: {{ .Values.replicas.postgres }}
+  # PVC เป็น ReadWriteOnce ถ้าใช้ RollingUpdate (ค่า default) K8s จะสร้าง pod ใหม่
+  # ก่อนลบตัวเก่า แต่ volume ยังถูก mount ค้างอยู่ที่ตัวเก่า pod ใหม่จะติด
+  # Multi-Attach error แล้ว rollout ค้างถาวร Recreate จึงเป็นทางเดียวที่ถูก
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-postgres
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-postgres
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-postgres
+          image: "{{ default .Values.registry .Values.postgres.registry }}/{{ .Values.postgres.image }}:{{ .Values.postgres.tag }}"
+          imagePullPolicy: {{ .Values.postgres.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: {{ .Values.service.postgres.targetPort }}
+          env:
+            # PVC บน GKE (ext4) มี lost+found อยู่ที่ root ของ volume
+            # ทำให้ initdb ไม่ยอม init ถ้าชี้ PGDATA ที่ mount point ตรง ๆ
+            # จึงชี้ PGDATA ไปที่ subdirectory ใต้ mount แทน
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          envFrom:
+            - configMapRef:
+                name: apcms-env
+            # Secret ถูกอ่านทีหลัง configMap จึงชนะเมื่อ key ซ้ำกัน ทำให้ย้าย
+            # POSTGRES_PASSWORD ออกจาก ConfigMap ไปไว้ใน Secret ได้โดยไม่ต้องแก้ template
+            # optional: true เพื่อให้ deploy ผ่านแม้ยังไม่ได้รัน `k8s.sh create-secret`
+            - secretRef:
+                name: apcms-postgres-secret
+                optional: true
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources.postgres | nindent 12 }}
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-postgres-pvc

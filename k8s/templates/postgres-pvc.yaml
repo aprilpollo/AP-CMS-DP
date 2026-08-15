@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-postgres-pvc
+  namespace: {{ .Values.namespace }}
+  annotations:
+    # กัน `helm uninstall` (ที่ k8s.sh delete-all เรียก) ลบ PVC นี้ไปพร้อม release
+    # ซึ่งจะทำให้ข้อมูล Postgres หายทั้งก้อน ถ้าตั้งใจลบจริงให้ใช้ `k8s.sh delete-pvcs`
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.postgres.storage | default "5Gi" }}

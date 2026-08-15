@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mail
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Release.Name }}-mail
+spec:
+  replicas: {{ .Values.replicas.mail }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-mail
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-mail
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-mail
+          image: "{{ default .Values.registry .Values.mail.registry }}/{{ .Values.mail.image }}:{{ .Values.mail.tag }}"
+          imagePullPolicy: {{ .Values.mail.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: {{ .Values.service.mail.targetPort }}
+          {{- with .Values.mail.env }}
+          env:
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: apcms-env
+          volumeMounts:
+            # mail (Go/godotenv) เปิดไฟล์ .env จาก working dir /app แบบบังคับ
+            # จึง mount .env จาก configmap apcms-dotenv (สร้างโดย k8s.sh create-cf)
+            - name: dotenv
+              mountPath: /app/.env
+              subPath: .env
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.service.mail.targetPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.service.mail.targetPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources.mail | nindent 12 }}
+      volumes:
+        - name: dotenv
+          configMap:
+            name: apcms-dotenv

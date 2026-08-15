@@ -1,0 +1,11 @@
+{{- if .Values.api.envConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apcms-env
+  namespace: {{ .Values.namespace }}
+data:
+  {{- range $key, $value := .Values.api.envConfigMap }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
