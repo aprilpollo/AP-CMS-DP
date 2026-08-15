@@ -32,8 +32,6 @@ spec:
             - configMapRef:
                 name: apcms-env
           volumeMounts:
-            # mail (Go/godotenv) เปิดไฟล์ .env จาก working dir /app แบบบังคับ
-            # จึง mount .env จาก configmap apcms-dotenv (สร้างโดย k8s.sh create-cf)
             - name: dotenv
               mountPath: /app/.env
               subPath: .env
